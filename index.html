@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kinoprogramm mit Cineville</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kinoprogramm">
+<meta name="theme-color" content="#6a1b3d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%236a1b3d'/%3E%3Cpath d='M24 34h52v32H24z' fill='%23f6f4f8'/%3E%3Cpath d='M42 42l18 8-18 8z' fill='%236a1b3d'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f4f8; --surface: #ffffff; --ink: #1b1726; --muted: #645f75;
+    --line: #dad5e3; --velvet: #6a1b3d; --on-velvet: #ffffff; --soft: #f0e3ea;
+    --gold: #a8740a; --good: #1c6b45; --bad: #a3242b;
+    --head-h: 150px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #14111c; --surface: #1f1b2b; --ink: #eeeaf5; --muted: #a59fb7;
+      --line: #383247; --velvet: #e58ba8; --on-velvet: #1b1726; --soft: #33212d;
+      --gold: #f0c050; --good: #7fd3a6; --bad: #f09a9f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--velvet); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 14px; }
+
+  /* Kopf: Stadt als Überschrift, Tage, Filter */
+  header {
+    position: sticky; top: 0; z-index: 20; background: var(--bg);
+    padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid var(--line);
+  }
+  .city-row { display: flex; align-items: center; gap: 10px; padding: 10px 0 4px; }
+  .city-row select {
+    flex: 1; min-width: 0; appearance: none; -webkit-appearance: none; border: 0; background: transparent;
+    font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; padding: 2px 26px 2px 0;
+    color: var(--velvet);
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 12px) 55%, calc(100% - 5px) 55%; background-size: 7px 7px; background-repeat: no-repeat;
+  }
+  .icon-btn {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+    min-width: 44px; height: 44px; padding: 0 12px; font-size: .9rem;
+  }
+  .strip { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+    padding: 8px 13px; min-height: 40px; white-space: nowrap; font-size: .95rem; font-variant-numeric: tabular-nums;
+  }
+  .chip[aria-pressed="true"] { background: var(--velvet); border-color: var(--velvet); color: var(--on-velvet); font-weight: 700; }
+  .chip.nav { padding: 8px 12px; }
+  .chip:disabled { opacity: .35; cursor: default; }
+  .sep { flex: none; width: 1px; background: var(--line); margin: 6px 2px; }
+
+  /* Programm */
+  .search { margin: 12px 0 4px; }
+  .search input {
+    width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+  }
+  .day-head {
+    position: sticky; top: var(--head-h); z-index: 10; display: flex; align-items: baseline; gap: 10px; width: 100%;
+    background: var(--bg); border: 0; border-bottom: 2px solid var(--ink); padding: 14px 0 6px; text-align: left;
+  }
+  .day-head strong { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
+  .day-head span { color: var(--muted); }
+  .day-head em { margin-left: auto; font-style: normal; font-size: .85rem; color: var(--velvet); }
+  .film { border-bottom: 1px solid var(--line); }
+  .film-head {
+    display: flex; gap: 12px; align-items: baseline; width: 100%; border: 0; background: transparent;
+    padding: 11px 0; text-align: left;
+  }
+  .film-head .title { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .film-head .star { color: var(--gold); margin-right: 4px; }
+  .film-head .times {
+    flex: 0 1 46%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 10px;
+    font-variant-numeric: tabular-nums; color: var(--muted);
+  }
+  .film.open .film-head .title { color: var(--velvet); }
+  .film-body { background: var(--surface); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 10px; color: var(--muted); font-size: .92rem; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .shows { list-style: none; margin: 0; padding: 0; }
+  .shows li {
+    display: grid; grid-template-columns: 3.4em 1fr; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .shows .time { font-weight: 800; font-variant-numeric: tabular-nums; grid-row: span 2; font-size: 1.05rem; }
+  .shows .where { overflow-wrap: anywhere; }
+  .ver { display: inline-block; border: 1px solid currentColor; border-radius: 5px; padding: 0 5px; font-size: .78rem; font-weight: 700; margin-right: 6px; color: var(--velvet); }
+  .ver.none { color: var(--muted); font-weight: 400; border-style: dashed; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+  a { color: var(--velvet); }
+  .btn {
+    border: 1px solid var(--velvet); color: var(--velvet); background: transparent; border-radius: 8px;
+    padding: 7px 12px; min-height: 38px; font-size: .92rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .btn.solid, .btn[aria-pressed="true"] { background: var(--velvet); color: var(--on-velvet); }
+  .btn.quiet { border-color: var(--line); color: var(--ink); font-weight: 500; }
+  .film-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .note { color: var(--muted); padding: 14px 0; margin: 0; }
+  .status { color: var(--muted); font-size: .85rem; padding: 18px 0 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .error { color: var(--bad); font-weight: 600; }
+
+  /* Gesehen */
+  h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; margin: 14px 0 10px; color: var(--velvet); line-height: 1.1; }
+  h2 { font-size: 1.15rem; margin: 26px 0 8px; }
+  .card { background: var(--surface); border-radius: 14px; padding: 16px; margin: 0 0 12px; }
+  .card p { margin: 0 0 8px; }
+  .big { font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
+  .bar { height: 14px; border-radius: 999px; background: var(--soft); overflow: hidden; margin: 10px 0 8px; }
+  .bar i { display: block; height: 100%; background: var(--velvet); border-radius: 999px; }
+  .bar.done i { background: var(--good); }
+  .plus { color: var(--good); font-weight: 700; }
+  .minus { color: var(--bad); font-weight: 700; }
+  dl.sums { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; margin: 0; font-variant-numeric: tabular-nums; }
+  dl.sums dd { margin: 0; text-align: right; }
+  dl.sums .total { font-weight: 800; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 4px; }
+  .month-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 2px solid var(--ink); padding: 16px 0 6px; }
+  .month-head strong { font-size: 1.1rem; }
+  .month-head span { font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+  .seen { list-style: none; margin: 0; padding: 0; }
+  .seen li { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .seen .t { font-weight: 600; overflow-wrap: anywhere; }
+  .seen .s { grid-column: 1; color: var(--muted); font-size: .9rem; }
+  .seen .p { grid-row: 1 / span 2; grid-column: 2; font-variant-numeric: tabular-nums; }
+  .seen .x { grid-row: 1 / span 2; grid-column: 3; border: 0; background: transparent; color: var(--muted); min-width: 40px; min-height: 40px; font-size: 1.2rem; }
+  label { display: block; font-size: .92rem; color: var(--muted); margin: 12px 0 4px; }
+  .field { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); min-height: 44px; }
+  .price-row { display: grid; grid-template-columns: 1fr 6.5em; gap: 10px; align-items: center; padding: 6px 0; }
+  .price-row span { overflow-wrap: anywhere; }
+  details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+  /* Dialoge und Navigation */
+  dialog {
+    border: 0; border-radius: 16px; background: var(--surface); color: var(--ink); padding: 18px;
+    width: min(92vw, 460px); max-height: 86vh;
+  }
+  dialog::backdrop { background: rgba(20, 12, 24, .55); }
+  dialog h2 { margin: 0 0 8px; }
+  .checks { list-style: none; padding: 0; margin: 0; max-height: 52vh; overflow-y: auto; }
+  .checks label { display: flex; gap: 10px; align-items: center; margin: 0; padding: 10px 0; color: var(--ink); font-size: 1rem; border-bottom: 1px solid var(--line); }
+  .checks input { width: 20px; height: 20px; accent-color: var(--velvet); }
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; background: var(--surface);
+    border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  nav button { flex: 1; border: 0; background: transparent; min-height: 56px; font-weight: 600; color: var(--muted); border-top: 3px solid transparent; }
+  nav button[aria-current="page"] { color: var(--velvet); border-top-color: var(--velvet); }
+  @media (prefers-reduced-motion: no-preference) { .bar i { transition: width .4s ease; } }
+</style>
+</head>
+<body>
+
+<header id="head">
+  <div class="wrap">
+    <div class="city-row">
+      <select id="city" aria-label="Stadt wählen"><option>Hamburg</option></select>
+      <button class="icon-btn" id="reload" title="Programm neu laden">Neu laden</button>
+    </div>
+    <div class="strip" id="days" role="group" aria-label="Zeitraum"></div>
+    <div class="strip" id="filters" role="group" aria-label="Filter"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="view-program">
+    <div class="search"><input id="q" type="search" placeholder="Film suchen" aria-label="Film suchen" autocomplete="off"></div>
+    <div id="program" aria-live="polite"></div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section id="view-seen" hidden>
+    <h1>Gesehen</h1>
+    <div id="balance"></div>
+    <div class="buttons"><button class="btn solid" id="add">Film eintragen</button></div>
+    <div id="seen-list"></div>
+
+    <h2>Abo und Ticketpreise</h2>
+    <div class="card">
+      <label for="fee">Abo-Preis pro Monat in Euro</label>
+      <input class="field" id="fee" type="number" inputmode="decimal" min="0" step="0.5">
+      <label for="start">Abo läuft seit</label>
+      <input class="field" id="start" type="month">
+      <label for="def">Normaler Ticketpreis in Euro, wenn für ein Kino nichts eingetragen ist</label>
+      <input class="field" id="def" type="number" inputmode="decimal" min="0" step="0.5">
+      <details id="price-details">
+        <summary>Ticketpreise je Kino in <span id="price-city"></span></summary>
+        <div id="prices"></div>
+      </details>
+    </div>
+
+    <h2>Sicherung</h2>
+    <div class="card">
+      <p>Deine Einträge liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung, damit nichts verloren geht.</p>
+      <div class="buttons">
+        <button class="btn quiet" id="export">Sicherung speichern</button>
+        <button class="btn quiet" id="import-btn">Sicherung einspielen</button>
+        <input type="file" id="import" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav aria-label="Bereiche">
+  <button id="tab-program" aria-current="page">Programm</button>
+  <button id="tab-seen">Gesehen</button>
+</nav>
+
+<dialog id="dlg-venues" aria-labelledby="dlg-venues-h">
+  <h2 id="dlg-venues-h">Kinos auswählen</h2>
+  <ul class="checks" id="venue-checks"></ul>
+  <div class="buttons">
+    <button class="btn quiet" id="venues-all">Alle Kinos zeigen</button>
+    <button class="btn solid" id="venues-done">Fertig</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-add" aria-labelledby="dlg-add-h">
+  <h2 id="dlg-add-h">Film eintragen</h2>
+  <label for="add-title">Filmtitel</label>
+  <input class="field" id="add-title" list="titles" autocomplete="off">
+  <datalist id="titles"></datalist>
+  <label for="add-date">Datum</label>
+  <input class="field" id="add-date" type="date">
+  <label for="add-venue">Kino</label>
+  <select class="field" id="add-venue"></select>
+  <div class="buttons">
+    <button class="btn quiet" id="add-cancel">Abbrechen</button>
+    <button class="btn solid" id="add-save">Eintragen</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var API = "https://api.cineville.de";
+  var HEADERS = { "accept": "application/json", "locale": "de-DE" };
+  var TZ = "Europe/Berlin";
+  var STORE = "cineville-app-v1", CACHE = "cineville-cache-v1";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- Datum und Format ---------- */
+  var fKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+  var fTime = new Intl.DateTimeFormat("de-DE", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  var fWd = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", weekday: "long" });
+  var fWdShort = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", weekday: "short" });
+  var fLong = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", day: "numeric", month: "long" });
+  var fMonth = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", month: "long", year: "numeric" });
+  var fMonthName = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", month: "long" });
+  var fEur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+  function dayKey(ms) { return fKey.format(new Date(ms)); }
+  function timeOf(ms) { return fTime.format(new Date(ms)); }
+  function noon(key) { return new Date(key + "T12:00:00Z"); }
+  function addDays(key, n) { return new Date(noon(key).getTime() + n * 864e5).toISOString().slice(0, 10); }
+  function todayKey() { return dayKey(Date.now()); }
+  // Mitternacht in Berlin als Zeitpunkt, unabhängig von der Zeitzone des Geräts
+  function berlinMidnight(key) {
+    var base = Date.parse(key + "T00:00:00Z");
+    for (var h = 1; h <= 2; h++) {
+      var c = base - h * 36e5;
+      if (dayKey(c) === key && timeOf(c) === "00:00") return c;
+    }
+    return base - 36e5;
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function safeUrl(u) { return /^https?:\/\//i.test(u || "") ? u : ""; }
+
+  /* ---------- Gespeicherte Daten ---------- */
+  var data = { seen: [], prices: {}, defPrice: 10, fee: 24, startMonth: "", stars: {} };
+  function loadStore() {
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && typeof d === "object") {
+          data.seen = Array.isArray(d.seen) ? d.seen : [];
+          data.prices = d.prices && typeof d.prices === "object" ? d.prices : {};
+          data.stars = d.stars && typeof d.stars === "object" ? d.stars : {};
+          if (isFinite(d.defPrice)) data.defPrice = +d.defPrice;
+          if (isFinite(d.fee)) data.fee = +d.fee;
+          if (typeof d.startMonth === "string") data.startMonth = d.startMonth;
+        }
+      }
+    } catch (e) {}
+  }
+  function saveStore() {
+    try { localStorage.setItem(STORE, JSON.stringify(data)); return true; } catch (e) { return false; }
+  }
+  function priceOf(entry) {
+    var p = data.prices[entry.venueId];
+    return isFinite(p) && p !== null && p !== "" ? +p : data.defPrice;
+  }
+
+  /* ---------- Zustand ---------- */
+  var state = {
+    city: "Hamburg", mode: "week", weekStart: todayKey(), day: todayKey(),
+    orig: false, from: 0, venues: {}, starred: false, q: "",
+    open: {}, tab: "program", loading: false, error: "", loadedAt: 0
+  };
+  var venues = [];            // alle Kinos
+  var venueById = {};
+  var events = [], prods = {}; // aktuelles Programm
+  var memCache = {};
+  var loadToken = 0;
+
+  /* ---------- Schnittstelle ---------- */
+  async function api(path, body) {
+    var opt = { headers: Object.assign({}, HEADERS) };
+    if (body) {
+      opt.method = "POST";
+      opt.headers["content-type"] = "application/json";
+      opt.body = JSON.stringify(body);
+    }
+    var res = await fetch(path.indexOf("http") === 0 ? path : API + path, opt);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+  async function apiAll(path, kind, body) {
+    var items = [], url = path;
+    for (var i = 0; i < 40 && url; i++) {
+      var d = await api(url, body);
+      items = items.concat(((d._embedded || {})[kind]) || []);
+      url = ((d._links || {}).next || {}).href || "";
+    }
+    return items;
+  }
+  function versionOf(a) {
+    a = a || {};
+    var subs = Array.isArray(a.subtitles) ? a.subtitles : [];
+    if (a.languageVersion === "original") {
+      if (!subs.length) return { l: "OF", o: 1 };
+      if (subs.some(function (s) { return /^de/i.test(s); })) return { l: "OmU", o: 1 };
+      if (subs.some(function (s) { return /^en/i.test(s); })) return { l: "OmeU", o: 1 };
+      return { l: "OmU", o: 1 };
+    }
+    if (a.languageVersion) return { l: "DF", o: 0 };
+    if (subs.length) return { l: "mit UT", o: 0 };
+    return { l: "", o: 0 };
+  }
+  async function loadVenues() {
+    try {
+      var c = JSON.parse(localStorage.getItem(CACHE + "-venues") || "null");
+      if (c && Array.isArray(c.v)) setVenues(c.v);
+    } catch (e) {}
+    var raw = await apiAll("/venues?page[limit]=100", "venues");
+    var list = raw.filter(function (v) { return !v.isHidden && v.address && v.address.city; }).map(function (v) {
+      return { id: v.id, name: v.name, city: String(v.address.city).trim(), web: (v.attributes || {}).website || "" };
+    });
+    setVenues(list);
+    try { localStorage.setItem(CACHE + "-venues", JSON.stringify({ v: list })); } catch (e) {}
+  }
+  function setVenues(list) {
+    venues = list; venueById = {};
+    list.forEach(function (v) { venueById[v.id] = v; });
+    renderCities();
+  }
+  function cities() {
+    var set = {};
+    venues.forEach(function (v) { set[v.city] = 1; });
+    var top = ["Hamburg", "Berlin"];
+    var rest = Object.keys(set).filter(function (c) { return top.indexOf(c) < 0; })
+      .sort(function (a, b) { return a.localeCompare(b, "de"); });
+    return top.concat(rest);
+  }
+  function cacheKey() { return state.city + "|" + state.weekStart; }
+
+  async function loadProgram(force) {
+    var key = cacheKey(), token = ++loadToken;
+    state.error = "";
+    var hit = memCache[key];
+    if (!hit && !force) {
+      try {
+        var c = JSON.parse(localStorage.getItem(CACHE) || "null");
+        if (c && c.key === key) hit = memCache[key] = c;
+      } catch (e) {}
+    }
+    if (hit) { events = hit.events; prods = hit.prods; state.loadedAt = hit.ts; }
+    else { events = []; prods = {}; state.loadedAt = 0; }
+    if (hit && !force && Date.now() - hit.ts < 45 * 6e4) { state.loading = false; render(); return; }
+
+    state.loading = true; render();
+    try {
+      if (!venues.length) await loadVenues();
+      if (token !== loadToken) return;
+      var ids = venues.filter(function (v) { return v.city === state.city; }).map(function (v) { return v.id; });
+      var from = berlinMidnight(state.weekStart), to = berlinMidnight(addDays(state.weekStart, 7));
+      var raw = ids.length ? await apiAll("/events/search", "events", {
+        productionId: { isNull: false }, isHidden: { eq: false }, venueId: { in: ids },
+        startDate: { gte: new Date(from).toISOString(), lt: new Date(to).toISOString() },
+        sort: { startDate: "asc" }, page: { limit: 100 }
+      }) : [];
+      if (token !== loadToken) return;
+      var evs = raw.map(function (e) {
+        var v = versionOf(e.attributes);
+        return { i: e.id, p: e.productionId, v: e.venueId, s: Date.parse(e.startDate), u: safeUrl(e.ticketingUrl),
+                 l: v.l, o: v.o, t: (e.productionHint || {}).title || "" };
+      }).filter(function (e) { return isFinite(e.s); });
+      var pids = Object.keys(evs.reduce(function (m, e) { m[e.p] = 1; return m; }, {}));
+      var pr = {};
+      for (var i = 0; i < pids.length; i += 100) {
+        var part = await apiAll("/productions/search", "productions", { id: { in: pids.slice(i, i + 100) }, page: { limit: 100 } });
+        part.forEach(function (p) {
+          var a = p.attributes || {};
+          pr[p.id] = { t: p.title || "", g: p.slug || "", d: a.duration || 0, r: (a.directors || []).map(function (x) { return String(x).trim(); }),
+                       a: a.contentRatingMinimumAge, y: a.releaseYear || 0 };
+        });
+        if (token !== loadToken) return;
+      }
+      var entry = { key: key, ts: Date.now(), events: evs, prods: pr };
+      memCache[key] = entry;
+      try { localStorage.setItem(CACHE, JSON.stringify(entry)); } catch (e) {}
+      events = evs; prods = pr; state.loadedAt = entry.ts;
+    } catch (e) {
+      if (token !== loadToken) return;
+      state.error = "Das Programm konnte nicht geladen werden. Prüfe deine Internetverbindung und lade neu.";
+    }
+    state.loading = false;
+    render();
+  }
+
+  /* ---------- Programm zeichnen ---------- */
+  function titleOf(e) { var p = prods[e.p]; return (p && p.t) || e.t || "Ohne Titel"; }
+  function passes(e) {
+    if (e.s < Date.now() - 20 * 6e4) return false;
+    if (state.orig && !e.o) return false;
+    if (state.from && parseInt(timeOf(e.s), 10) < state.from) return false;
+    var vs = Object.keys(state.venues);
+    if (vs.length && !state.venues[e.v]) return false;
+    if (state.starred && !data.stars[e.p]) return false;
+    if (state.q && titleOf(e).toLowerCase().indexOf(state.q) < 0) return false;
+    return true;
+  }
+  function renderCities() {
+    var sel = $("city"), list = cities();
+    if (list.indexOf(state.city) < 0) list.unshift(state.city);
+    sel.innerHTML = list.map(function (c) { return "<option" + (c === state.city ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
+  }
+  function chip(attrs, label, pressed, extra) {
+    return '<button class="chip ' + (extra || "") + '" ' + attrs + ' aria-pressed="' + (pressed ? "true" : "false") + '">' + label + "</button>";
+  }
+  function renderBars() {
+    var today = todayKey(), h = "";
+    h += chip('data-act="today"', "Heute", state.mode === "day" && state.day === today);
+    h += chip('data-act="week"', "Woche", state.mode === "week");
+    h += '<span class="sep"></span>';
+    h += '<button class="chip nav" data-act="prev" aria-label="Eine Woche zurück"' + (state.weekStart <= today ? " disabled" : "") + ">‹</button>";
+    for (var i = 0; i < 7; i++) {
+      var k = addDays(state.weekStart, i);
+      h += chip('data-day="' + k + '"', fWdShort.format(noon(k)).replace(".", "") + " " + parseInt(k.slice(8), 10) + ".", state.mode === "day" && state.day === k);
+    }
+    h += '<button class="chip nav" data-act="next" aria-label="Eine Woche weiter"' + (state.weekStart >= addDays(today, 21) ? " disabled" : "") + ">›</button>";
+    $("days").innerHTML = h;
+
+    var n = Object.keys(state.venues).length;
+    var f = chip('data-f="orig"', "OmU/OF", state.orig);
+    [15, 18, 20].forEach(function (t) { f += chip('data-from="' + t + '"', "ab " + t + " Uhr", state.from === t); });
+    f += chip('data-f="venues"', n ? (n === 1 ? esc((venueById[Object.keys(state.venues)[0]] || {}).name || "1 Kino") : n + " Kinos") : "Kino wählen", n > 0);
+    f += chip('data-f="starred"', "★ Gemerkt", state.starred);
+    $("filters").innerHTML = f;
+    document.documentElement.style.setProperty("--head-h", $("head").offsetHeight + "px");
+  }
+  function renderDay(key, withHead) {
+    var groups = {}, order = [];
+    events.forEach(function (e) {
+      if (dayKey(e.s) !== key || !passes(e)) return;
+      if (!groups[e.p]) { groups[e.p] = []; order.push(e.p); }
+      groups[e.p].push(e);
+    });
+    var h = "";
+    if (withHead) {
+      h += '<button class="day-head" data-day="' + key + '"><strong>' + (key === todayKey() ? "Heute" : esc(fWd.format(noon(key)))) +
+           "</strong><span>" + esc((key === todayKey() ? fWd.format(noon(key)) + ", " : "") + fLong.format(noon(key))) + "</span>" +
+           "<em>" + (state.mode === "week" ? "nur diesen Tag" : "ganze Woche") + "</em>" + "</button>";
+    }
+    if (!order.length) {
+      return h + '<p class="note">' + (state.loading ? "Programm wird geladen …" : "Keine Vorstellungen für diese Auswahl.") + "</p>";
+    }
+    order.forEach(function (pid) {
+      var list = groups[pid], id = key + "|" + pid, open = !!state.open[id], seenTimes = {};
+      var times = list.map(function (e) { return timeOf(e.s); }).filter(function (t) { return seenTimes[t] ? false : (seenTimes[t] = 1); });
+      h += '<article class="film' + (open ? " open" : "") + '">' +
+           '<button class="film-head" data-open="' + esc(id) + '" aria-expanded="' + open + '">' +
+           '<span class="title">' + (data.stars[pid] ? '<span class="star" aria-label="gemerkt">★</span>' : "") + esc(titleOf(list[0])) + "</span>" +
+           '<span class="times">' + times.map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</span></button>";
+      if (open) h += filmBody(pid, list);
+      h += "</article>";
+    });
+    return h;
+  }
+  function filmBody(pid, list) {
+    var p = prods[pid] || {}, h = '<div class="film-body"><p class="meta">';
+    h += "<span>Altersfreigabe <b>" + (p.a === 0 || p.a ? "ab " + esc(p.a) : "keine Angabe") + "</b></span>";
+    if (p.d) h += "<span><b>" + esc(p.d) + "</b> Minuten</span>";
+    if (p.r && p.r.length) h += "<span>Regie <b>" + esc(p.r.join(", ")) + "</b></span>";
+    if (p.y) h += "<span>" + esc(p.y) + "</span>";
+    h += '</p><ul class="shows">';
+    list.forEach(function (e) {
+      var v = venueById[e.v] || { name: "Kino", web: "" };
+      var link = e.u || safeUrl(v.web), seen = data.seen.some(function (s) { return s.id === e.i; });
+      h += '<li><span class="time">' + timeOf(e.s) + '</span><span class="where">' +
+           (e.l ? '<span class="ver">' + esc(e.l) + "</span>" : '<span class="ver none">Fassung offen</span>') + esc(v.name) + "</span>" +
+           '<span class="row-actions">' +
+           (link ? '<a class="btn quiet" href="' + esc(link) + '" target="_blank" rel="noopener">' + (e.u ? "Zur Vorstellung" : "Zum Kino") + "</a>" : "") +
+           '<button class="btn" data-seen="' + esc(e.i) + '" aria-pressed="' + seen + '">' + (seen ? "Gesehen ✓" : "Gesehen") + "</button></span></li>";
+    });
+    h += '</ul><div class="film-actions">' +
+         '<button class="btn quiet" data-star="' + esc(pid) + '" aria-pressed="' + !!data.stars[pid] + '">' + (data.stars[pid] ? "★ Gemerkt" : "☆ Merken") + "</button>" +
+         (p.g ? '<a class="btn quiet" href="https://cineville.de/de-DE/filme/' + encodeURIComponent(p.g) + '" target="_blank" rel="noopener">Film bei Cineville</a>' : "") +
+         "</div></div>";
+    return h;
+  }
+  function renderProgram() {
+    var h = "";
+    if (state.error) h += '<p class="note error">' + esc(state.error) + "</p>";
+    if (state.mode === "day") h += renderDay(state.day, true);
+    else for (var i = 0; i < 7; i++) h += renderDay(addDays(state.weekStart, i), true);
+    $("program").innerHTML = h;
+    var s = "";
+    if (state.loading) s = "Programm wird geladen …";
+    else if (state.loadedAt) s = "Stand " + timeOf(state.loadedAt) + " Uhr, Daten von cineville.de. Sonderveranstaltungen können vom Abo ausgenommen sein.";
+    $("status").textContent = s;
+  }
+
+  /* ---------- Gesehen und Abo-Bilanz ---------- */
+  function monthAdd(m, n) {
+    var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + n;
+    return new Date(Date.UTC(y, mo, 15)).toISOString().slice(0, 7);
+  }
+  function renderSeen() {
+    var now = todayKey().slice(0, 7), byMonth = {}, total = 0;
+    data.seen.forEach(function (s) {
+      var m = String(s.day).slice(0, 7);
+      (byMonth[m] = byMonth[m] || []).push(s);
+      total += priceOf(s);
+    });
+    var first = Object.keys(byMonth).sort()[0] || now;
+    var start = /^\d{4}-\d{2}$/.test(data.startMonth) ? data.startMonth : first;
+    if (start > now) start = now;
+    var months = [];
+    for (var m = start; m <= now && months.length < 600; m = monthAdd(m, 1)) months.push(m);
+    Object.keys(byMonth).forEach(function (k) { if (months.indexOf(k) < 0) months.push(k); });
+    months.sort().reverse();
+    var paidMonths = months.filter(function (k) { return k >= start && k <= now; }).length;
+    var cost = paidMonths * data.fee;
+
+    var cur = byMonth[now] || [], curVal = cur.reduce(function (a, s) { return a + priceOf(s); }, 0);
+    var pct = data.fee > 0 ? Math.min(100, Math.round(curVal / data.fee * 100)) : 100;
+    var name = fMonthName.format(noon(now + "-15")), line;
+    if (curVal >= data.fee) line = "Der " + name + " hat sich gelohnt: " + fEur.format(curVal - data.fee) + " mehr gesehen als bezahlt.";
+    else {
+      var need = data.defPrice > 0 ? Math.ceil((data.fee - curVal) / data.defPrice) : 0;
+      line = "Noch " + (need === 1 ? "ein Film" : need + " Filme") + ", dann hat sich der " + name + " gelohnt.";
+    }
+    var diff = total - cost;
+    var h = '<div class="card"><p class="big">' + esc(line) + "</p>" +
+      '<div class="bar' + (curVal >= data.fee ? " done" : "") + '" role="img" aria-label="' + pct + ' Prozent des Abo-Preises erreicht"><i style="width:' + pct + '%"></i></div>' +
+      "<p>" + cur.length + (cur.length === 1 ? " Film" : " Filme") + " im " + esc(name) + ": Tickets für " + fEur.format(curVal) + " bei " + fEur.format(data.fee) + " Abo-Preis.</p></div>";
+    h += '<div class="card"><dl class="sums">' +
+      "<dt>Gesehene Filme insgesamt</dt><dd>" + data.seen.length + "</dd>" +
+      "<dt>Tickets hätten gekostet</dt><dd>" + fEur.format(total) + "</dd>" +
+      "<dt>Abo für " + paidMonths + (paidMonths === 1 ? " Monat" : " Monate") + "</dt><dd>" + fEur.format(cost) + "</dd>" +
+      '<dt class="total">' + (diff >= 0 ? "Gespart" : "Noch im Minus") + '</dt><dd class="total ' + (diff >= 0 ? "plus" : "minus") + '">' + fEur.format(Math.abs(diff)) + "</dd>" +
+      "</dl></div>";
+    $("balance").innerHTML = h;
+
+    var l = "";
+    if (!data.seen.length) l = '<p class="note">Noch nichts eingetragen. Tippe im Programm bei einer Vorstellung auf „Gesehen“ oder trage hier einen Film von Hand ein.</p>';
+    months.forEach(function (k) {
+      var list = (byMonth[k] || []).slice().sort(function (a, b) { return (b.day + (b.time || "")).localeCompare(a.day + (a.time || "")); });
+      if (!list.length && k !== now) return;
+      var val = list.reduce(function (a, s) { return a + priceOf(s); }, 0), d = val - data.fee;
+      l += '<div class="month-head"><strong>' + esc(fMonth.format(noon(k + "-15"))) + "</strong><span>" + list.length + (list.length === 1 ? " Film, " : " Filme, ") +
+           fEur.format(val) + (k >= start ? ' <b class="' + (d >= 0 ? "plus" : "minus") + '">' + (d >= 0 ? "+" : "−") + fEur.format(Math.abs(d)) + "</b>" : "") + "</span></div>";
+      l += '<ul class="seen">' + list.map(function (s) {
+        var dd = noon(s.day);
+        return '<li><span class="t">' + esc(s.title) + '</span><span class="s">' + esc(fWdShort.format(dd) + " " + fLong.format(dd)) + (s.time ? ", " + esc(s.time) + " Uhr" : "") +
+               ", " + esc(s.venueName || "Kino") + '</span><span class="p">' + fEur.format(priceOf(s)) + "</span>" +
+               '<button class="x" data-del="' + esc(s.id) + '" aria-label="Eintrag ' + esc(s.title) + ' löschen">×</button></li>';
+      }).join("") + "</ul>";
+    });
+    $("seen-list").innerHTML = l;
+    $("tab-seen").textContent = "Gesehen" + (data.seen.length ? " (" + data.seen.length + ")" : "");
+  }
+  function renderSettings() {
+    $("fee").value = data.fee;
+    $("def").value = data.defPrice;
+    $("start").value = data.startMonth;
+    $("price-city").textContent = state.city;
+    var list = venues.filter(function (v) { return v.city === state.city; }).sort(function (a, b) { return a.name.localeCompare(b.name, "de"); });
+    $("prices").innerHTML = list.map(function (v) {
+      var p = data.prices[v.id];
+      return '<label class="price-row"><span>' + esc(v.name) + '</span><input class="field" type="number" inputmode="decimal" min="0" step="0.5" data-price="' + esc(v.id) +
+             '" placeholder="' + esc(String(data.defPrice).replace(".", ",")) + '" value="' + (isFinite(p) && p !== null && p !== "" ? esc(p) : "") + '"></label>';
+    }).join("") || '<p class="note">Die Kinoliste wird noch geladen.</p>';
+  }
+  function render() {
+    renderBars();
+    $("view-program").hidden = state.tab !== "program";
+    $("view-seen").hidden = state.tab !== "seen";
+    $("days").hidden = $("filters").hidden = state.tab !== "program";
+    $("tab-program").setAttribute("aria-current", state.tab === "program" ? "page" : "false");
+    $("tab-seen").setAttribute("aria-current", state.tab === "seen" ? "page" : "false");
+    if (state.tab === "program") renderProgram();
+    else renderSeen();
+    $("tab-seen").textContent = "Gesehen" + (data.seen.length ? " (" + data.seen.length + ")" : "");
+    document.documentElement.style.setProperty("--head-h", $("head").offsetHeight + "px");
+  }
+
+  /* ---------- Bedienung ---------- */
+  $("city").addEventListener("change", function () {
+    state.city = this.value; state.venues = {}; state.open = {};
+    renderSettings(); loadProgram(false);
+  });
+  $("reload").addEventListener("click", function () { loadProgram(true); });
+  $("days").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    var today = todayKey();
+    if (b.dataset.day) { state.mode = "day"; state.day = b.dataset.day; render(); window.scrollTo(0, 0); return; }
+    var act = b.dataset.act;
+    if (act === "week") { state.mode = "week"; render(); window.scrollTo(0, 0); return; }
+    if (act === "today") {
+      state.mode = "day"; state.day = today;
+      if (state.weekStart !== today) { state.weekStart = today; loadProgram(false); } else render();
+      window.scrollTo(0, 0); return;
+    }
+    if (act === "prev" || act === "next") {
+      var w = addDays(state.weekStart, act === "next" ? 7 : -7);
+      if (w < today) w = today;
+      state.weekStart = w; state.day = w; state.open = {};
+      loadProgram(false); window.scrollTo(0, 0);
+    }
+  });
+  $("filters").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.from) { var t = +b.dataset.from; state.from = state.from === t ? 0 : t; }
+    else if (b.dataset.f === "orig") state.orig = !state.orig;
+    else if (b.dataset.f === "starred") state.starred = !state.starred;
+    else if (b.dataset.f === "venues") { openVenues(); return; }
+    render();
+  });
+  $("q").addEventListener("input", function () { state.q = this.value.trim().toLowerCase(); renderProgram(); });
+  $("program").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.day) { state.mode = state.mode === "week" ? "day" : "week"; state.day = b.dataset.day; render(); window.scrollTo(0, 0); return; }
+    if (b.dataset.open) { var k = b.dataset.open; if (state.open[k]) delete state.open[k]; else state.open[k] = 1; renderProgram(); return; }
+    if (b.dataset.star) {
+      var pid = b.dataset.star;
+      if (data.stars[pid]) delete data.stars[pid]; else data.stars[pid] = (prods[pid] || {}).t || 1;
+      saveStore(); renderProgram(); return;
+    }
+    if (b.dataset.seen) {
+      var id = b.dataset.seen, idx = data.seen.findIndex(function (s) { return s.id === id; });
+      if (idx >= 0) data.seen.splice(idx, 1);
+      else {
+        var e = events.find(function (x) { return x.i === id; }); if (!e) return;
+        var v = venueById[e.v] || {};
+        data.seen.push({ id: id, title: titleOf(e), day: dayKey(e.s), time: timeOf(e.s), venueId: e.v, venueName: v.name || "", city: v.city || state.city, pid: e.p });
+      }
+      if (!saveStore()) alert("Der Eintrag konnte auf diesem Gerät nicht gespeichert werden.");
+      render();
+    }
+  });
+  $("tab-program").addEventListener("click", function () { state.tab = "program"; render(); window.scrollTo(0, 0); });
+  $("tab-seen").addEventListener("click", function () { state.tab = "seen"; renderSettings(); render(); window.scrollTo(0, 0); });
+
+  function openVenues() {
+    var has = {};
+    events.forEach(function (e) { has[e.v] = 1; });
+    var list = venues.filter(function (v) { return v.city === state.city && (has[v.id] || state.venues[v.id]); })
+      .sort(function (a, b) { return a.name.localeCompare(b.name, "de"); });
+    $("venue-checks").innerHTML = list.map(function (v) {
+      return '<li><label><input type="checkbox" value="' + esc(v.id) + '"' + (state.venues[v.id] ? " checked" : "") + ">" + esc(v.name) + "</label></li>";
+    }).join("") || '<li class="note">In diesem Zeitraum sind keine Kinos mit Programm geladen.</li>';
+    $("dlg-venues").showModal();
+  }
+  $("venue-checks").addEventListener("change", function (ev) {
+    if (ev.target.checked) state.venues[ev.target.value] = 1; else delete state.venues[ev.target.value];
+  });
+  $("venues-all").addEventListener("click", function () { state.venues = {}; $("dlg-venues").close(); });
+  $("venues-done").addEventListener("click", function () { $("dlg-venues").close(); });
+  $("dlg-venues").addEventListener("close", render);
+
+  $("add").addEventListener("click", function () {
+    var titles = {};
+    events.forEach(function (e) { titles[titleOf(e)] = 1; });
+    $("titles").innerHTML = Object.keys(titles).sort(function (a, b) { return a.localeCompare(b, "de"); }).map(function (t) { return '<option value="' + esc(t) + '">'; }).join("");
+    $("add-title").value = "";
+    $("add-date").value = todayKey();
+    var h = "";
+    cities().forEach(function (c) {
+      var list = venues.filter(function (v) { return v.city === c; }).sort(function (a, b) { return a.name.localeCompare(b.name, "de"); });
+      if (!list.length) return;
+      h += '<optgroup label="' + esc(c) + '">' + list.map(function (v) { return '<option value="' + esc(v.id) + '">' + esc(v.name) + "</option>"; }).join("") + "</optgroup>";
+    });
+    $("add-venue").innerHTML = h;
+    var firstHere = venues.filter(function (v) { return v.city === state.city; }).sort(function (a, b) { return a.name.localeCompare(b.name, "de"); })[0];
+    if (firstHere) $("add-venue").value = firstHere.id;
+    $("dlg-add").showModal();
+  });
+  $("add-cancel").addEventListener("click", function () { $("dlg-add").close(); });
+  $("add-save").addEventListener("click", function () {
+    var title = $("add-title").value.trim(), day = $("add-date").value, v = venueById[$("add-venue").value];
+    if (!title) { $("add-title").focus(); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { $("add-date").focus(); return; }
+    data.seen.push({ id: "m" + Date.now(), title: title, day: day, time: "", venueId: v ? v.id : "", venueName: v ? v.name : "", city: v ? v.city : "" });
+    if (!saveStore()) alert("Der Eintrag konnte auf diesem Gerät nicht gespeichert werden.");
+    $("dlg-add").close(); render();
+  });
+  $("seen-list").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-del]"); if (!b) return;
+    var s = data.seen.find(function (x) { return x.id === b.dataset.del; });
+    if (s && confirm("„" + s.title + "“ aus der Liste löschen?")) {
+      data.seen = data.seen.filter(function (x) { return x !== s; });
+      saveStore(); render();
+    }
+  });
+  function num(el, fallback) { var n = parseFloat(String(el.value).replace(",", ".")); return isFinite(n) && n >= 0 ? n : fallback; }
+  $("fee").addEventListener("change", function () { data.fee = num(this, data.fee); saveStore(); renderSeen(); });
+  $("def").addEventListener("change", function () { data.defPrice = num(this, data.defPrice); saveStore(); renderSettings(); renderSeen(); });
+  $("start").addEventListener("change", function () { data.startMonth = /^\d{4}-\d{2}$/.test(this.value) ? this.value : ""; saveStore(); renderSeen(); });
+  $("prices").addEventListener("change", function (ev) {
+    var id = ev.target.dataset.price; if (!id) return;
+    if (ev.target.value === "") delete data.prices[id]; else data.prices[id] = num(ev.target, data.defPrice);
+    saveStore(); renderSeen();
+  });
+  $("export").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(data, null, 1)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "kino-sicherung-" + todayKey() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  });
+  $("import-btn").addEventListener("click", function () { $("import").click(); });
+  $("import").addEventListener("change", function () {
+    var file = this.files[0]; this.value = ""; if (!file) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var d = JSON.parse(r.result);
+        if (!d || !Array.isArray(d.seen)) throw new Error("Format");
+        if (!confirm("Sicherung mit " + d.seen.length + " Einträgen einspielen? Die Einträge auf diesem Gerät werden ersetzt.")) return;
+        localStorage.setItem(STORE, JSON.stringify(d));
+        loadStore(); renderSettings(); render();
+      } catch (e) { alert("Diese Datei ist keine gültige Sicherung."); }
+    };
+    r.readAsText(file);
+  });
+  // Nach Mitternacht oder langer Pause auf den aktuellen Tag springen und neu laden
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) return;
+    var today = todayKey();
+    if (state.weekStart < today) { state.weekStart = today; if (state.day < today) state.day = today; loadProgram(false); }
+    else if (state.loadedAt && Date.now() - state.loadedAt > 45 * 6e4) loadProgram(true);
+    else render();
+  });
+  window.addEventListener("resize", function () { document.documentElement.style.setProperty("--head-h", $("head").offsetHeight + "px"); });
+
+  /* ---------- Start ---------- */
+  loadStore();
+  render();
+  renderSettings();
+  loadVenues().then(function () { renderSettings(); }, function () {}).then(function () { loadProgram(false); });
+})();
+</script>
+</body>
+</html>
